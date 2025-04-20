@@ -6,8 +6,8 @@ frontend:
         - npm ci
     build:
       commands:
-        - echo "NEXT_PUBLIC_SUPABASE_URL exists: $NEXT_PUBLIC_SUPABASE_URL"
-        - echo "NEXTAUTH_URL exists: $NEXTAUTH_URL"
+        - "echo \"NEXT_PUBLIC_SUPABASE_URL exists: $NEXT_PUBLIC_SUPABASE_URL\""
+        - "echo \"NEXTAUTH_URL exists: $NEXTAUTH_URL\""
         - npm run build
   artifacts:
     baseDirectory: .next
@@ -33,6 +33,6 @@ frontend:
     - source: '/api/:all*'
       target: '/api/:all*'
       status: '200'
-    - source: '/<*>'
+    - source: '**'
       target: '/index.html'
       status: '200'
