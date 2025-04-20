@@ -2,7 +2,7 @@ import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { getServerSession } from "next-auth/next";
 import { compare } from "bcryptjs";
-import { prisma } from "@/lib/db";
+import { supabaseAdmin } from "@/lib/supabase";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -19,13 +19,15 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          // Find the user in the database
-          const user = await prisma.user.findUnique({
-            where: { email: credentials.email },
-          });
+          // Find the user in the database using Supabase admin client
+          const { data: user, error } = await supabaseAdmin
+            .from('users')
+            .select('*')
+            .eq('email', credentials.email)
+            .single();
 
-          // If no user is found or password doesn't match, return null
-          if (!user) {
+          if (error || !user) {
+            console.error("User lookup error:", error);
             return null;
           }
 

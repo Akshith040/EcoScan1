@@ -43,6 +43,7 @@ export default function HistoryPage() {
         throw new Error("Failed to fetch history");
       }
       const data = await response.json();
+      console.log("History data:", data); // Debug log to check the response
       setHistoryItems(data);
     } catch (error) {
       console.error("Error fetching history:", error);
@@ -56,6 +57,29 @@ export default function HistoryPage() {
       ...prev,
       [id]: !prev[id]
     }));
+  };
+
+  // Format date safely with fallback
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Invalid Date";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString();
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
+  // Format confidence percentage safely with fallback
+  const formatConfidence = (confidence: number | null) => {
+    if (confidence === null || confidence === undefined) return "Unknown";
+    
+    // Check if confidence is already in percentage format (0-100)
+    if (confidence > 1) {
+      return `${confidence.toFixed(2)}%`;
+    }
+    // Convert decimal format (0-1) to percentage
+    return `${(confidence * 100).toFixed(2)}%`;
   };
 
   // If still loading the session, show a loading state
@@ -96,7 +120,7 @@ export default function HistoryPage() {
                     <CardTitle className="text-lg font-semibold text-green-800 flex justify-between items-center">
                       <span>{item.wasteType || "Unknown"}</span>
                       <Badge className="capitalize ml-2">
-                        {new Date(item.createdAt).toLocaleDateString()}
+                        {formatDate(item.createdAt)}
                       </Badge>
                     </CardTitle>
                   </CardHeader>
@@ -113,7 +137,7 @@ export default function HistoryPage() {
                     
                     {item.confidence !== null && (
                       <p className="text-green-700 mb-2">
-                        Confidence: {(item.confidence * 100).toFixed(2)}%
+                        Confidence: {formatConfidence(item.confidence)}
                       </p>
                     )}
                     

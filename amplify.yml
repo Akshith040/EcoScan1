@@ -4,10 +4,10 @@ frontend:
     preBuild:
       commands:
         - npm ci
-        - npm install -g prisma
-        - npx prisma generate
     build:
       commands:
+        - echo "NEXT_PUBLIC_SUPABASE_URL exists: $NEXT_PUBLIC_SUPABASE_URL"
+        - echo "NEXTAUTH_URL exists: $NEXTAUTH_URL"
         - npm run build
   artifacts:
     baseDirectory: .next
