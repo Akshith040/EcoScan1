@@ -32,7 +32,7 @@ export default function LoginPage() {
       }
 
       // On successful login, redirect to home page
-      window.location.href = "/";
+      router.push("/");
     } catch (error) {
       console.error("Login error:", error);
       setError("An unexpected error occurred");

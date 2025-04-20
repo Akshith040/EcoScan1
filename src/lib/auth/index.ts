@@ -46,7 +46,7 @@ export const authOptions: NextAuthOptions = {
           console.error("Error during authentication:", error);
           return null;
         }
-      },
+      }
     }),
   ],
   pages: {
@@ -55,6 +55,18 @@ export const authOptions: NextAuthOptions = {
   },
   session: {
     strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: process.env.NODE_ENV === "production",
+      },
+    },
   },
   callbacks: {
     async jwt({ token, user }) {
@@ -70,15 +82,15 @@ export const authOptions: NextAuthOptions = {
       return session;
     },
     async redirect({ url, baseUrl }) {
-      // Respect the callback URL if it's provided and is safe
-      if (url.startsWith(baseUrl)) {
-        return url;
-      }
-      // Otherwise return to the URL they came from or the base URL
-      return url.startsWith("/") ? `${baseUrl}${url}` : baseUrl;
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || "YOUR_FALLBACK_SECRET_DO_NOT_USE_IN_PRODUCTION",
+  secret: process.env.NEXTAUTH_SECRET,
+  debug: process.env.NODE_ENV === 'development',
 };
 
 export const getAuthSession = () => getServerSession(authOptions);

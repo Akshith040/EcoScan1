@@ -25,12 +25,20 @@ export async function middleware(request: NextRequest) {
     // Redirect to login
     const url = new URL('/auth/login', request.url);
     url.searchParams.set('callbackUrl', encodeURI(request.url));
+    
+    // Log for debugging in production
+    console.log(`Redirecting unauthenticated user from ${pathname} to ${url.toString()}`);
+    
     return NextResponse.redirect(url);
   }
 
   // If the user is authenticated and trying to access auth pages
   if (token && isPublicPath) {
     const url = new URL('/', request.url);
+    
+    // Log for debugging in production
+    console.log(`Redirecting authenticated user from ${pathname} to /`);
+    
     return NextResponse.redirect(url);
   }
 
