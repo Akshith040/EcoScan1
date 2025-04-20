@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { useDropzone } from "react-dropzone";
 import type { DropzoneOptions } from "react-dropzone";
 import { classifyWaste } from "@/services/classify-waste-service";
@@ -17,6 +19,8 @@ import { cn } from "@/lib/utils";
 import { RecyclingInstructions } from "@/components/recycling-instructions";
 
 export default function Home() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [wasteType, setWasteType] = useState<string | null>(null);
   const [wasteDetails, setWasteDetails] = useState<string | null>(null);
@@ -139,102 +143,132 @@ export default function Home() {
     }
   };
 
-  return (
-    <div className="flex flex-col items-center justify-start min-h-screen py-10 bg-beige">
-      <h1 className="text-4xl font-bold mb-8 text-green-800 fade-in">
-        EcoSnap Recycle Guide
-      </h1>
+  // Redirect to login if not authenticated (client-side check)
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+    }
+  }, [status, router]);
 
-      <Card className="w-full max-w-md bg-light-beige shadow-md rounded-lg overflow-hidden card-hover">
-        <CardHeader className="py-4">
-          <CardTitle className="text-lg font-semibold text-green-800">
-            Upload Waste Image
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-4 flex flex-col items-center">
-          <div
-            {...getRootProps()}
-            className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-md cursor-pointer transition-colors duration-300 ${
-              isDragActive ? "border-teal-500 bg-teal-50" : "border-green-500"
-            }`}
+  // If still loading the session, show a loading state
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-green-500"></div>
+      </div>
+    );
+  }
+
+  // Only show the app UI if authenticated
+  if (status === "authenticated") {
+    return (
+      <div className="flex flex-col items-center justify-start min-h-screen py-10 bg-beige">
+        <div className="flex justify-between w-full max-w-md mb-4">
+          <h1 className="text-4xl font-bold text-green-800 fade-in">
+            EcoSnap Recycle Guide
+          </h1>
+          <button 
+            onClick={() => router.push("/auth/login")}
+            className="text-sm text-green-700 hover:text-green-900"
           >
-            <input {...getInputProps()} />
-            {imageUrl ? (
-              <img
-                src={imageUrl}
-                alt="Uploaded waste"
-                className="max-h-full max-w-full object-contain fade-in"
-              />
-            ) : (
-              <p className="text-green-700 fade-in">
-                {isDragActive
-                  ? "Drop the image here..."
-                  : "Drag 'n' drop an image here, or click to select files"}
-              </p>
-            )}
-          </div>
-          {showManualSubmit && (
-            <Button
-              onClick={handleClassification}
-              className="mt-4 btn-primary slide-up"
-              disabled={!imageUrl || isClassifying}
+            Logout
+          </button>
+        </div>
+
+        <Card className="w-full max-w-md bg-light-beige shadow-md rounded-lg overflow-hidden card-hover">
+          <CardHeader className="py-4">
+            <CardTitle className="text-lg font-semibold text-green-800">
+              Upload Waste Image
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 flex flex-col items-center">
+            <div
+              {...getRootProps()}
+              className={`flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-md cursor-pointer transition-colors duration-300 ${
+                isDragActive ? "border-teal-500 bg-teal-50" : "border-green-500"
+              }`}
             >
-              {isClassifying ? (
-                <>
-                  <Icons.loader className="mr-2 h-4 w-4 animate-spin" />
-                  Classifying...
-                </>
-              ) : (
-                "Classify Waste"
-              )}
-            </Button>
-          )}
-
-          {wasteType && confidence !== null && (
-            <div className="mt-4 w-full slide-up">
-              <h2 className="text-xl font-semibold mb-2 text-green-800">
-                Classification Result:
-              </h2>
-              <div className="flex items-center space-x-2">
-                <p className="text-green-700">Waste Type:</p>
-                <Badge className="capitalize">{wasteType}</Badge>
-              </div>
-              <p className="text-green-700">
-                Confidence Level: {(confidence * 100).toFixed(2)}%
-              </p>
-            </div>
-          )}
-
-          {wasteType && wasteDetails && (
-            <>
-              <Separator className="my-4" />
-              <div className="mt-6 w-full">
-                <h2 className="text-xl font-semibold mb-2 text-green-800">
-                  Additional Description:
-                </h2>
-                <Textarea
-                  placeholder="Provide more details to improve the recycling instructions..."
-                  className="w-full mb-3"
-                  value={userDescription}
-                  onChange={handleUserDescriptionChange}
+              <input {...getInputProps()} />
+              {imageUrl ? (
+                <img
+                  src={imageUrl}
+                  alt="Uploaded waste"
+                  className="max-h-full max-w-full object-contain fade-in"
                 />
-                <Button onClick={handleSubmitUserDescription} className="btn-primary" disabled={isClassifying}>
-                  Update Instructions
-                </Button>
-              </div>
-            </>
-          )}
-
-          {recyclingInstructions && (
-            <div className="mt-4 w-full slide-up">
-              <h2 className="text-xl font-semibold mb-2 text-green-800">
-                Recycling Instructions:
-              </h2>
-              <RecyclingInstructions instructions={recyclingInstructions} />
+              ) : (
+                <p className="text-green-700 fade-in">
+                  {isDragActive
+                    ? "Drop the image here..."
+                    : "Drag 'n' drop an image here, or click to select files"}
+                </p>
+              )}
             </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
+            {showManualSubmit && (
+              <Button
+                onClick={handleClassification}
+                className="mt-4 btn-primary slide-up"
+                disabled={!imageUrl || isClassifying}
+              >
+                {isClassifying ? (
+                  <>
+                    <Icons.loader className="mr-2 h-4 w-4 animate-spin" />
+                    Classifying...
+                  </>
+                ) : (
+                  "Classify Waste"
+                )}
+              </Button>
+            )}
+
+            {wasteType && confidence !== null && (
+              <div className="mt-4 w-full slide-up">
+                <h2 className="text-xl font-semibold mb-2 text-green-800">
+                  Classification Result:
+                </h2>
+                <div className="flex items-center space-x-2">
+                  <p className="text-green-700">Waste Type:</p>
+                  <Badge className="capitalize">{wasteType}</Badge>
+                </div>
+                <p className="text-green-700">
+                  Confidence Level: {(confidence * 100).toFixed(2)}%
+                </p>
+              </div>
+            )}
+
+            {wasteType && wasteDetails && (
+              <>
+                <Separator className="my-4" />
+                <div className="mt-6 w-full">
+                  <h2 className="text-xl font-semibold mb-2 text-green-800">
+                    Additional Description:
+                  </h2>
+                  <Textarea
+                    placeholder="Provide more details to improve the recycling instructions..."
+                    className="w-full mb-3"
+                    value={userDescription}
+                    onChange={handleUserDescriptionChange}
+                  />
+                  <Button onClick={handleSubmitUserDescription} className="btn-primary" disabled={isClassifying}>
+                    Update Instructions
+                  </Button>
+                </div>
+              </>
+            )}
+
+            {recyclingInstructions && (
+              <div className="mt-4 w-full slide-up">
+                <h2 className="text-xl font-semibold mb-2 text-green-800">
+                  Recycling Instructions:
+                </h2>
+                <RecyclingInstructions instructions={recyclingInstructions} />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // This shouldn't be reached because of the redirect, but just in case
+  return null;
 }
