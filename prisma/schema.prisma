@@ -14,10 +14,23 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   name      String?
-  email     String   @unique
+  email     String        @unique
   password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  history   UserHistory[]
+}
+
+model UserHistory {
+  id                    String   @id @default(cuid())
+  userId                String
+  imageUrl              String?
+  wasteType             String?
+  confidence            Float?
+  userDescription       String?
+  recyclingInstructions String?
+  createdAt             DateTime @default(now())
+  user                  User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
