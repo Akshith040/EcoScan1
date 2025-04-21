@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -11,18 +11,89 @@ export default function SignupPage() {
     email: "",
     password: "",
   });
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState({
+    name: "",
+    email: "",
+    password: "",
+    general: ""
+  });
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
+
+  // Password strength validation
+  const [passwordStrength, setPasswordStrength] = useState({
+    hasMinLength: false,
+    hasUppercase: false,
+    hasLowercase: false,
+    hasNumber: false,
+    hasSpecial: false
+  });
+
+  // Update password strength indicators on password change
+  useEffect(() => {
+    const password = formData.password;
+    setPasswordStrength({
+      hasMinLength: password.length >= 8,
+      hasUppercase: /[A-Z]/.test(password),
+      hasLowercase: /[a-z]/.test(password),
+      hasNumber: /[0-9]/.test(password),
+      hasSpecial: /[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)
+    });
+  }, [formData.password]);
+
+  const validateForm = () => {
+    let valid = true;
+    const newErrors = {
+      name: "",
+      email: "",
+      password: "",
+      general: ""
+    };
+
+    // Name validation - no spaces, only letters
+    if (!/^[A-Za-z]+$/.test(formData.name)) {
+      newErrors.name = "Name should contain only letters without spaces";
+      valid = false;
+    }
+
+    // Email validation
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Please enter a valid email address";
+      valid = false;
+    }
+
+    // Password validation
+    if (formData.password.length < 8) {
+      newErrors.password = "Password must be at least 8 characters";
+      valid = false;
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*])/.test(formData.password)) {
+      newErrors.password = "Password must include uppercase, lowercase, number and special character";
+      valid = false;
+    }
+
+    setErrors(newErrors);
+    return valid;
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+    
+    // Clear individual field error on change
+    if (errors[name as keyof typeof errors]) {
+      setErrors(prev => ({ ...prev, [name]: "" }));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null);
+    setErrors({ name: "", email: "", password: "", general: "" });
+    
+    // Validate form before submission
+    if (!validateForm()) {
+      return;
+    }
+    
     setIsLoading(true);
 
     try {
@@ -38,7 +109,7 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (!response.ok) {
-        setError(data.error || "Failed to create account");
+        setErrors(prev => ({ ...prev, general: data.error || "Failed to create account" }));
         setIsLoading(false);
         return;
       }
@@ -48,7 +119,7 @@ export default function SignupPage() {
       router.push("/auth/login");
     } catch (error) {
       console.error("Signup error:", error);
-      setError("An unexpected error occurred");
+      setErrors(prev => ({ ...prev, general: "An unexpected error occurred" }));
       setIsLoading(false);
     }
   };
@@ -63,9 +134,9 @@ export default function SignupPage() {
           </p>
         </div>
 
-        {error && (
+        {errors.general && (
           <div className="p-3 text-sm font-medium text-red-500 bg-red-50 rounded-md">
-            {error}
+            {errors.general}
           </div>
         )}
 
@@ -80,10 +151,16 @@ export default function SignupPage() {
               type="text"
               value={formData.name}
               onChange={handleChange}
-              className="w-full px-3 py-2 mt-1 text-gray-900 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-              placeholder="John Doe"
+              className={cn(
+                "w-full px-3 py-2 mt-1 text-gray-900 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500",
+                errors.name && "border-red-300"
+              )}
+              placeholder="JohnDoe"
               required
             />
+            {errors.name && (
+              <p className="mt-1 text-xs text-red-500">{errors.name}</p>
+            )}
           </div>
 
           <div>
@@ -96,10 +173,16 @@ export default function SignupPage() {
               type="email"
               value={formData.email}
               onChange={handleChange}
-              className="w-full px-3 py-2 mt-1 text-gray-900 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={cn(
+                "w-full px-3 py-2 mt-1 text-gray-900 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500",
+                errors.email && "border-red-300"
+              )}
               placeholder="name@example.com"
               required
             />
+            {errors.email && (
+              <p className="mt-1 text-xs text-red-500">{errors.email}</p>
+            )}
           </div>
 
           <div>
@@ -112,11 +195,53 @@ export default function SignupPage() {
               type="password"
               value={formData.password}
               onChange={handleChange}
-              className="w-full px-3 py-2 mt-1 text-gray-900 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+              className={cn(
+                "w-full px-3 py-2 mt-1 text-gray-900 border rounded-md focus:outline-none focus:ring-2 focus:ring-green-500",
+                errors.password && "border-red-300"
+              )}
               placeholder="••••••••"
-              minLength={6}
               required
             />
+            {errors.password && (
+              <p className="mt-1 text-xs text-red-500">{errors.password}</p>
+            )}
+            
+            {/* Password strength indicators */}
+            <div className="mt-2 space-y-1.5">
+              <p className="text-xs font-medium text-gray-700">Password must contain:</p>
+              <div className="grid grid-cols-2 gap-1.5">
+                <div className={`text-xs flex items-center ${passwordStrength.hasMinLength ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className={`mr-1 ${passwordStrength.hasMinLength ? 'text-green-600' : 'text-gray-400'}`}>
+                    {passwordStrength.hasMinLength ? '✓' : '○'}
+                  </span>
+                  At least 8 characters
+                </div>
+                <div className={`text-xs flex items-center ${passwordStrength.hasUppercase ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className={`mr-1 ${passwordStrength.hasUppercase ? 'text-green-600' : 'text-gray-400'}`}>
+                    {passwordStrength.hasUppercase ? '✓' : '○'}
+                  </span>
+                  Uppercase letter
+                </div>
+                <div className={`text-xs flex items-center ${passwordStrength.hasLowercase ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className={`mr-1 ${passwordStrength.hasLowercase ? 'text-green-600' : 'text-gray-400'}`}>
+                    {passwordStrength.hasLowercase ? '✓' : '○'}
+                  </span>
+                  Lowercase letter
+                </div>
+                <div className={`text-xs flex items-center ${passwordStrength.hasNumber ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className={`mr-1 ${passwordStrength.hasNumber ? 'text-green-600' : 'text-gray-400'}`}>
+                    {passwordStrength.hasNumber ? '✓' : '○'}
+                  </span>
+                  Number
+                </div>
+                <div className={`text-xs flex items-center ${passwordStrength.hasSpecial ? 'text-green-600' : 'text-gray-500'}`}>
+                  <span className={`mr-1 ${passwordStrength.hasSpecial ? 'text-green-600' : 'text-gray-400'}`}>
+                    {passwordStrength.hasSpecial ? '✓' : '○'}
+                  </span>
+                  Special character
+                </div>
+              </div>
+            </div>
           </div>
 
           <button

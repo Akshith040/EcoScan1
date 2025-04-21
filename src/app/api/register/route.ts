@@ -2,16 +2,67 @@ import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { supabaseAdmin } from "@/lib/supabase";
 
+// Validation functions
+const validateName = (name: string) => {
+  if (!name || name.trim() === "") {
+    return "Name is required";
+  }
+  if (!/^[A-Za-z]+$/.test(name)) {
+    return "Name should contain only letters without spaces";
+  }
+  return null;
+};
+
+const validateEmail = (email: string) => {
+  if (!email || email.trim() === "") {
+    return "Email is required";
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return "Please enter a valid email address";
+  }
+  return null;
+};
+
+const validatePassword = (password: string) => {
+  if (!password) {
+    return "Password is required";
+  }
+  if (password.length < 8) {
+    return "Password must be at least 8 characters";
+  }
+  if (!/(?=.*[a-z])/.test(password)) {
+    return "Password must include at least one lowercase letter";
+  }
+  if (!/(?=.*[A-Z])/.test(password)) {
+    return "Password must include at least one uppercase letter";
+  }
+  if (!/(?=.*[0-9])/.test(password)) {
+    return "Password must include at least one number";
+  }
+  if (!/(?=.*[!@#$%^&*])/.test(password)) {
+    return "Password must include at least one special character";
+  }
+  return null;
+};
+
 export async function POST(req: Request) {
   try {
     const { name, email, password } = await req.json();
     
-    // Basic validation
-    if (!email || !password) {
-      return NextResponse.json(
-        { error: "Email and password are required" },
-        { status: 400 }
-      );
+    // Validate inputs
+    const nameError = validateName(name);
+    if (nameError) {
+      return NextResponse.json({ error: nameError }, { status: 400 });
+    }
+    
+    const emailError = validateEmail(email);
+    if (emailError) {
+      return NextResponse.json({ error: emailError }, { status: 400 });
+    }
+    
+    const passwordError = validatePassword(password);
+    if (passwordError) {
+      return NextResponse.json({ error: passwordError }, { status: 400 });
     }
     
     // Check if user already exists using Supabase admin client
