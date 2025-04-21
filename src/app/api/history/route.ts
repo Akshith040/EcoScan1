@@ -52,26 +52,36 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
+    console.log("History POST request received");
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.id) {
+      console.log("Unauthorized - No session user ID");
       return new NextResponse(JSON.stringify({ error: "Unauthorized" }), {
         status: 401,
       });
     }
     
     const body = await req.json();
+    console.log("History request body received:", { 
+      wasteType: body.wasteType,
+      hasImage: !!body.imageUrl,
+      hasInstructions: !!body.recyclingInstructions,
+      isUpdate: body.isUpdate 
+    });
+
     const {
       imageUrl,
       wasteType,
       confidence,
       userDescription,
       recyclingInstructions,
+      isUpdate,
     } = body;
     
     const userId = session.user.id as string;
     
-    // Create a new history entry using Supabase admin client to bypass RLS
+    // Always create a new history entry regardless of whether recyclingInstructions is null or not
     const { data: historyItem, error } = await supabaseAdmin
       .from('user_history')
       .insert([
@@ -81,7 +91,7 @@ export async function POST(req: NextRequest) {
           waste_type: wasteType,
           confidence: confidence,
           user_description: userDescription,
-          recycling_instructions: recyclingInstructions,
+          recycling_instructions: recyclingInstructions, // This can be null
           created_at: new Date().toISOString()
         }
       ])
@@ -95,6 +105,8 @@ export async function POST(req: NextRequest) {
       });
     }
     
+    console.log("History entry created successfully:", historyItem.id);
+
     // Transform the response to match the expected format in the frontend
     const formattedHistoryItem = {
       id: historyItem.id,

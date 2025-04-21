@@ -30,11 +30,14 @@ export default function Home() {
   const [userDescription, setUserDescription] = useState<string>("");
   const [isClassifying, setIsClassifying] = useState(false);
   const [showManualSubmit, setShowManualSubmit] = useState(false);
+  const [isHistorySaved, setIsHistorySaved] = useState(false);
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const file = acceptedFiles[0];
     setImageUrl(URL.createObjectURL(file));
     setShowManualSubmit(true);
+    // Reset history saved flag when new image is uploaded
+    setIsHistorySaved(false);
   }, []);
 
   const {getRootProps, getInputProps, isDragActive} = useDropzone({onDrop});
@@ -42,7 +45,12 @@ export default function Home() {
   // Save history entry
   const saveToHistory = async (recyclingInstructions: string | null, isUpdate: boolean = false) => {
     try {
-      if (!session?.user?.id || !wasteType) return;
+      if (!session?.user?.id || !wasteType) {
+        console.log("Cannot save history: missing user session or waste type");
+        return;
+      }
+
+      console.log("Saving to history:", { wasteType, isUpdate, hasInstructions: !!recyclingInstructions });
 
       // Convert imageUrl (blob) to base64 for persistent storage
       let base64Image = null;
@@ -85,6 +93,9 @@ export default function Home() {
 
       if (!response.ok) {
         console.error("Failed to save history entry");
+      } else {
+        console.log("History saved successfully");
+        setIsHistorySaved(true);
       }
     } catch (error) {
       console.error("Error saving history:", error);
@@ -106,6 +117,7 @@ export default function Home() {
     setRecyclingInstructions(null);
     setUserDescription("");
     setShowManualSubmit(false);
+    setIsHistorySaved(false);
     
     toast({
       title: "Reset Complete",
@@ -128,6 +140,7 @@ export default function Home() {
     setWasteDetails(null);
     setConfidence(null);
     setRecyclingInstructions(null);
+    setIsHistorySaved(false);
 
     try {
       const response = await fetch(imageUrl);
@@ -136,18 +149,21 @@ export default function Home() {
       reader.onloadend = async () => {
         const base64String = reader.result as string;
         try {
+          // Step 1: Classify the waste
           const classificationResult = await classifyWaste({ photoUrl: base64String, contentType: blob.type });
           setWasteType(classificationResult.wasteType);
           setWasteDetails(classificationResult.details);
           setConfidence(classificationResult.confidence);
 
+          // Step 2: Get recycling instructions
           const instructionsResult = await provideRecyclingInstructions({
             wasteType: classificationResult.wasteType,
             details: classificationResult.details,
           });
           setRecyclingInstructions(instructionsResult.recyclingInstructions);
 
-          // Save to history after successful classification
+          // Step 3: Save to history after successful classification
+          // Even if recycling instructions are null, we still want to save the entry
           await saveToHistory(instructionsResult.recyclingInstructions);
 
           toast({
